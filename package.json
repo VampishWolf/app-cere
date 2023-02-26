@@ -11,6 +11,7 @@
   "dependencies": {
     "@nextui-org/react": "^1.0.0-beta.12",
     "@rainbow-me/rainbowkit": "^0.11.0",
+    "@traderxyz/nft-swap-sdk": "^0.31.1",
     "@types/node": "18.14.1",
     "@types/react": "18.0.28",
     "@types/react-dom": "18.0.11",
