@@ -1,6 +1,9 @@
+import { Button, Input, Loading } from "@nextui-org/react";
+import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
+import { ethers } from "ethers";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { useAccount, useNetwork } from "wagmi";
+import { useAccount, useNetwork, useProvider, useSigner } from "wagmi";
 
 interface TokenProps {
   contractAddress: string;
@@ -44,10 +47,29 @@ export default function Token() {
   const contractAddress = tokens[tokens.length - 2];
   const tokenId = tokens[tokens.length - 1];
 
-  const { chain } = useNetwork();
+  const { address, isConnected } = useAccount();
+  const { chain } = useNetwork()
+  const provider = useProvider()
+  
+  const { data: signer, isError, isLoading } = useSigner()
+
   const [nft, setNft] = useState<NFT[]>([]);
   const [errorProof, setErrorProof] = useState<Error | null>(null);
   const [loadingNft, setLoadingNft] = useState<boolean>(false);
+  const [nftPrice, setPrice] = useState<Number>(0);
+
+  const ASSET = {
+    type: "ERC721",
+    tokenAddress: contractAddress,
+    tokenId,
+  }
+
+  const AMOUNT = {
+    type: "ERC20",
+    tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    amount: ethers.utils.parseUnits(nftPrice.toString(), "ether"),
+  }
+
 
   useEffect(() => {
     const fetchNft = async () => {
@@ -78,18 +100,91 @@ export default function Token() {
     fetchNft();
   }, [tokenId, contractAddress]);
 
+  
+  const nftSwapSdk = new NftSwapV4(provider, signer, chain?.id);
+
+  const checkAllowance = async () => {
+    try {
+      const approvalStatusForUserA = await nftSwapSdk.loadApprovalStatus(
+        ASSET,
+        address
+      )
+      if (approvalStatusForUserA.contractApproved) return true
+      else await triggerAllowance()
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const triggerAllowance = async () => {
+    console.log("inside")
+    const approvalTx = await nftSwapSdk.approveTokenOrNftByAsset(
+      ASSET,
+      address,
+      // {
+      //   // These fees can be added via the website too,
+      //   // not going in that deep as I might end up making a company :p
+      //   maxPriorityFeePerGas: self.gasFee.priorityGasPrice,
+      //   maxFeePerGas: self.gasFee.gasPrice,
+      //   gasLimit: self.gasFee.gas,
+      // }
+      )
+      const approvalTxReceipt = await approvalTx.wait()
+      if (approvalTxReceipt.status) return true
+      else return false
+  }
+  
+  const createListing = async () => {
+    try {
+      await checkAllowance()
+      console.log(signer)  
+        
+      const order = nftSwapSdk.buildOrder(
+        // I am offering an NFT
+        ASSET,
+        // I will receive an ERC20
+        AMOUNT,
+        // My wallet address
+        address
+      );
+      
+      const signedOrder = await nftSwapSdk.signOrder(order);
+      
+      const postedOrder = await nftSwapSdk.postOrder(signedOrder, chain?.id);
+      console.log('postedOrder',postedOrder)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   return (
     <div className="m-8">
-      <h1 className="font-bold text-2xl my-4">List NFT</h1>
-      {nft?.file_url && (
-        <div className="flex justify-between w-80 max-w-[300px]">
-          <section>
-            <img src={nft?.cached_file_url || nft?.file_url} alt="NFT_IMAGE" />
-            <p className="text-lg font-bold">{nft?.token_id}</p>
-          </section>
-          <section></section>
-        </div>
-      )}
+      <div className="flex justify-center gap-80 ">
+        <section className="flex flex-col my-4 gap-6">
+          <h1 className="font-bold text-2xl my-4">List for Sale</h1>
+          <Input 
+            color="default"
+            labelRight="ETH"
+            labelPlaceholder="Price"
+            onChange={(e) => setPrice(Number.parseFloat(e.target.value))}
+          />
+          <Button color="primary" auto onPress={createListing}>
+            List
+          </Button>
+          <Button disabled auto color="primary" css={{ px: "$13" }}>
+            <Loading type="points" color="primary" size="sm" />
+          </Button>
+        </section>
+        <section className="flex">
+          {nft?.file_url && (
+            <div className="flex flex-col w-80 max-w-[300px]">
+                <img src={nft?.cached_file_url || nft?.file_url} alt="NFT_IMAGE" />
+                <p className="text-lg font-bold">{nft?.token_id}</p>
+            </div>
+          )}
+        </section>
+        
+      </div>
     </div>
   );
 }

@@ -65,28 +65,28 @@ export default function Profile() {
       }
     }
     fetchNfts();
-  }, []);
+  }, [chain]);
 
   return (
     <div className="m-12">
       <div>
         <h2 className="font-bold text-2xl">Owned NFTs</h2>
         <div className="container flex items-center my-6 flex-wrap ">
-          {nfts.map(
+          {nfts?.map(
             (nft) =>
-              nft.file_url && (
+              nft?.file_url && (
                 <Link
-                  href={`/list/${nft.contract_address}/${nft.token_id}`}
-                  key={nft.token_id}
+                  href={`/list/${nft?.contract_address}/${nft?.token_id}`}
+                  key={nft?.token_id}
                 >
                   <div className="m-2 border border-purple-900 rounded-2xl cursor-pointer overflow-hidden hover:scale-105 ease-in-out duration-200 w-80 h-100 max-w-[300px]">
                     <div className="relative">
                       <img
-                        src={nft.cached_file_url || nft.file_url}
+                        src={nft?.cached_file_url || nft?.file_url}
                         alt="NFT_IMAGE"
                       />
                     </div>
-                    <h3 className="p-2 ellipsis">{nft.name || nft.token_id}</h3>
+                    <h3 className="p-2 ellipsis">{nft?.name || nft?.token_id}</h3>
                   </div>
                 </Link>
               )

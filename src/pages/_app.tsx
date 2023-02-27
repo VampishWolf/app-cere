@@ -4,35 +4,14 @@ import Header from '@/components/Header';
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import type { AppProps } from 'next/app'
 
-import { configureChains, createClient, WagmiConfig } from "wagmi";
-import { goerli, mainnet, polygon } from "wagmi/chains";
-import { alchemyProvider } from 'wagmi/providers/alchemy';
-import { publicProvider } from 'wagmi/providers/public';
+import { WagmiConfig } from "wagmi";
+import { chains, client } from '../utils/wagmi'
 
 export default function App({ Component, pageProps }: AppProps) {
-  
-  const { chains, provider } = configureChains(
-    [goerli, mainnet, polygon],
-    [
-      alchemyProvider({ apiKey: 'xYgmsystQOAvbxkasQbLhq8nexMDrnPK' }),
-      publicProvider()
-    ]
-  );
-  
-  const { connectors } = getDefaultWallets({
-    appName: 'Cere',
-    chains
-  });
-  
-  const wagmiClient = createClient({
-    autoConnect: true,
-    connectors,
-    provider
-  })
 
   return (
     <div className='main'>
-      <WagmiConfig client={wagmiClient}>
+      <WagmiConfig client={client}>
         <RainbowKitProvider chains={chains}>
           <Header />
           <div className=''>
