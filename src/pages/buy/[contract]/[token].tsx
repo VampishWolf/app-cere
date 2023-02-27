@@ -1,4 +1,4 @@
-import { Button, Input, Loading } from "@nextui-org/react";
+import { Button, Input, Loading, Text } from "@nextui-org/react";
 import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
 import { ethers } from "ethers";
 import { useRouter } from "next/router";
@@ -7,7 +7,7 @@ import { useAccount, useNetwork, useProvider, useSigner } from "wagmi";
 
 interface TokenProps {
   contractAddress: string;
-  tokenId: string;
+  token: string;
 }
 
 export default function Token() {
@@ -42,10 +42,9 @@ export default function Token() {
   const router = useRouter();
   const { query, asPath } = router;
 
-  const tokens = asPath.split("/");
-
-  const contractAddress = tokens[tokens.length - 2];
-  const tokenId = tokens[tokens.length - 1];
+  // const tokens = asPath.split("/");
+  const { nonce, contract, token } = query
+  // console.log('query', query)
 
   const { address, isConnected } = useAccount();
   const { chain } = useNetwork()
@@ -54,23 +53,47 @@ export default function Token() {
   const { data: signer, isError, isLoading } = useSigner()
 
   const [nft, setNft] = useState<NFT[]>([]);
+  const [listing, setListing] = useState<NFT[]>([]);
   const [errorProof, setErrorProof] = useState<Error | null>(null);
   const [loadingNft, setLoadingNft] = useState<boolean>(false);
+  const [loadingListing, setLoadingListing] = useState<boolean>(false);
   const [txInProcess, setTxInProcess] = useState<boolean>(false);
   const [nftPrice, setPrice] = useState<Number>(0);
 
   const ASSET = {
     type: "ERC721",
-    tokenAddress: contractAddress,
-    tokenId,
+    tokenAddress: contract,
+    token,
   }
 
   const AMOUNT = {
     type: "ERC20",
     tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    amount: nftPrice ? ethers.utils.parseUnits(nftPrice?.toString(), "ether") : 0,
+    amount: ethers.utils.parseUnits(nftPrice.toString(), "ether"),
   }
 
+
+  useEffect(() => {
+    async function fetchListing() {
+      setLoadingListing(true);
+      try {
+        // Search the orderbook for all offers to sell this NFT
+        console.log('nonce',nonce)
+        const orders = await nftSwap
+          .getOrders({
+            nonce: nonce?.toString(),
+          })
+          .then((data) => setListing(data?.orders[0]))
+
+      } catch (error) {
+        console.log(error);
+        // setErrorProof(error)
+      } finally {
+        setLoadingListing(false);
+      }
+    }
+    fetchListing();
+  }, [nonce]);
 
   useEffect(() => {
     const fetchNft = async () => {
@@ -85,7 +108,7 @@ export default function Token() {
         };
 
         await fetch(
-          `https://api.nftport.xyz/v0/nfts/${contractAddress}/${tokenId}?chain=${chain?.name.toLowerCase()}&refresh_metadata=false`,
+          `https://api.nftport.xyz/v0/nfts/${contract}/${token}?chain=${chain?.name.toLowerCase()}&refresh_metadata=false`,
           options
         )
           .then((res) => res.json())
@@ -99,7 +122,7 @@ export default function Token() {
       }
     };
     fetchNft();
-  }, [tokenId, contractAddress]);
+  }, [token, contract]);
 
   
   const nftSwap = new NftSwapV4(provider, signer, chain?.id);
@@ -107,8 +130,8 @@ export default function Token() {
   const checkAllowance = async () => {
     try {
       const approvalStatusForUserA = await nftSwap.loadApprovalStatus(
-        ASSET,
-        address,       
+        AMOUNT,
+        address
       )
       if (approvalStatusForUserA.contractApproved) return true
       else await triggerAllowance()
@@ -120,42 +143,22 @@ export default function Token() {
   const triggerAllowance = async () => {
     console.log("inside")
     const approvalTx = await nftSwap.approveTokenOrNftByAsset(
-      ASSET,
-      address,
-      // {
-      //   // These fees can be added via the website too,
-      //   // not going in that deep as I might end up making a company :p
-      //   maxPriorityFeePerGas: self.gasFee.priorityGasPrice,
-      //   maxFeePerGas: self.gasFee.gasPrice,
-      //   gasLimit: self.gasFee.gas,
-      // }
+        AMOUNT,
+        address,
       )
       const approvalTxReceipt = await approvalTx.wait()
       if (approvalTxReceipt.status) return true
       else return false
   }
   
-  const createListing = async () => {
+  const fillListing = async () => {
     try {
       setTxInProcess(true)
       await checkAllowance()
-      console.log(signer)  
-        
-      const order = nftSwap.buildNftAndErc20Order(
-        // I am offering an NFT
-        ASSET,
-        // I will receive an ERC20
-        AMOUNT,
-        // trade direction
-        'sell',
-        // My wallet address
-        address
-      );
-      
-      const signedOrder = await nftSwap.signOrder(order);
-      
-      const postedOrder = await nftSwap.postOrder(signedOrder, chain?.id);
-      console.log('postedOrder',postedOrder)
+      console.log(listing)
+      const fillTx = await nftSwap.fillSignedOrder(listing?.order)
+      const fillTxReceipt = await nftSwap.awaitTransactionHash(fillTx)
+      console.log(`🎉 🥳 Order filled. TxHash: ${fillTxReceipt.transactionHash}`);
       setTxInProcess(false)
     } catch (error) {
       console.log(error)
@@ -167,20 +170,16 @@ export default function Token() {
     <div className="m-8">
       <div className="flex justify-center gap-80 ">
         <section className="flex flex-col my-4 gap-6">
-          <h1 className="font-bold text-2xl my-4">List for Sale</h1>
-          <Input 
-            color="default"
-            labelRight="ETH"
-            labelPlaceholder="Price"
-            onChange={(e) => setPrice(Number.parseFloat(e.target.value))}
-          />
+          <h1 className="font-bold text-2xl my-4">Buy NFT</h1>
+          <Text size="$md">Listed Price</Text>
+          
           {
             txInProcess ?
             <Button disabled auto color="primary" css={{ px: "$13" }}>
               <Loading type="points" color="primary" size="sm" />
             </Button> :
-            <Button color="primary" auto onPress={createListing}>
-              List
+            <Button color="primary" auto onPress={fillListing}>
+              Buy
             </Button>
           }
         </section>
