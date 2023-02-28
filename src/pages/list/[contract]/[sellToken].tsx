@@ -154,7 +154,7 @@ export default function Token() {
       const postedOrder = await nftSwap
         .postOrder(signedOrder, chain?.id)
         .then(async (data) => {
-          const res = await fetch("/api/createlisting", {
+          const res = await fetch("/api/listings", {
             method: "POST",
             headers: {
               accept: "application/json",
@@ -171,7 +171,7 @@ export default function Token() {
           const result = await res.json();
           console.log("result", result);
           if (res.status === 201) {
-            alert("Successfully listed!");
+            alert("Successfully Listed!");
             router.push("/");
           }
         });
@@ -206,12 +206,12 @@ export default function Token() {
         </section>
         <section className="flex">
           {nft?.file_url && (
-            <div className="flex flex-col w-80 max-w-[300px]">
+            <div className="flex flex-col w-80 max-w-[300px] rounded-2xl overflow-hidden border border-purple-900">
               <img
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
               />
-              <p className="text-lg font-bold">{nft?.token_id}</p>
+              <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>
           )}
         </section>

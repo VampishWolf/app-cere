@@ -29,7 +29,7 @@ export default function HomePage() {
     async function fetchNfts() {
       setLoadingListings(true);
       try {
-        const res = await fetch("/api/fetchlistings");
+        const res = await fetch("/api/listings");
         const data = await res.json();
 
         // Saves only unique tokenIds with lowest price
@@ -65,7 +65,7 @@ export default function HomePage() {
             (listing) =>
               true && (
                 <Link
-                  href={`/buy/${listing?.contractAddress}/${listing?.tokenId}?nonce=${listing?.nonce}`}
+                  href={`/buy/${listing?.contractAddress}/${listing?.tokenId}?nonce=${listing?.nonce}&listingId=${listing._id}`}
                   key={listing?.tokenId}
                 >
                   <div className="m-2 border border-purple-900 rounded-2xl cursor-pointer overflow-hidden hover:scale-105 ease-in-out duration-200 w-80 h-100 max-w-[300px]">

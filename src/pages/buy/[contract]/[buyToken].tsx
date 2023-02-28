@@ -59,12 +59,9 @@ export default function Token() {
   }
 
   const router = useRouter();
-  const { query, asPath } = router;
+  const { query } = router;
 
-  // const tokens = asPath.split("/");
-  const { nonce, contract, buyToken } = query;
-  // console.log('query', query)
-  // console.log('query', asPath)
+  const { nonce, contract, buyToken, listingId } = query;
 
   const { address, isConnected } = useAccount();
   const { chain } = useNetwork();
@@ -171,24 +168,43 @@ export default function Token() {
       if (approvalTxReceipt.status) return true;
       else return false;
     } catch (error) {
-      alert(error);
       console.log(error);
+      alert(error);
     }
   };
 
   const fillListing = async () => {
     try {
       setTxInProcess(true);
+      if (listing?.order.maker === address?.toLowerCase()) {
+        alert("Cannot buy a token you already own");
+        setTxInProcess(false);
+        return;
+      }
       await checkAllowance();
       // console.log(listing);
       const fillTx = await nftSwap.fillSignedOrder(listing?.order);
-      const fillTxReceipt = await nftSwap.awaitTransactionHash(fillTx);
+      const fillTxReceipt = await nftSwap.awaitTransactionHash(fillTx.hash);
       console.log(
         `🎉 🥳 Order filled. TxHash: ${fillTxReceipt.transactionHash}`
       );
       setTxInProcess(false);
-      if(fillTxReceipt.transactionHash) {
-        alert("Successfully listed!");
+      if (fillTxReceipt.transactionHash) {
+        // Delete listing
+        await fetch(`/api/listings/${listingId}`, {
+          method: "DELETE",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            console.log("Record deleted successfully");
+          })
+          .catch((error) => {
+            console.error("There was a problem deleting the record:", error);
+          });
+
+        alert("Successfully Bought!");
         router.push("/");
       }
     } catch (error) {
@@ -235,12 +251,12 @@ export default function Token() {
         </section>
         <section className="flex">
           {nft?.file_url && (
-            <div className="flex flex-col w-80 max-w-[300px]">
+            <div className="flex flex-col w-80 max-w-[300px] rounded-2xl overflow-hidden border border-purple-900">
               <img
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
               />
-              <p className="text-lg font-bold">{nft?.token_id}</p>
+              <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>
           )}
         </section>

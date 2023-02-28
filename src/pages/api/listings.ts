@@ -6,7 +6,20 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method === "POST") {
+  console.log(req);
+  if (req.method === "GET") {
+    try {
+      // Connect to MongoDB
+      const db = await mongodb();
+
+      const listings = await db.collection("listings").find().toArray();
+      // Return the listings
+      res.status(200).json(listings);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  } else if (req.method === "POST") {
     const body = JSON.parse(req.body);
     const { contractAddress, fileUrl, nonce, tokenId, price } = body;
 
@@ -24,7 +37,7 @@ export default async function handler(
         fileUrl,
         nonce,
         tokenId,
-        price
+        price,
       });
 
       // Save the listing to MongoDB
