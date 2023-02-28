@@ -5,11 +5,6 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useAccount, useNetwork, useProvider, useSigner } from "wagmi";
 
-interface TokenProps {
-  contractAddress: string;
-  tokenId: string;
-}
-
 export default function Token() {
   interface Metadata {
     name: string;
@@ -48,10 +43,10 @@ export default function Token() {
   const tokenId = tokens[tokens.length - 1];
 
   const { address, isConnected } = useAccount();
-  const { chain } = useNetwork()
-  const provider = useProvider()
-  
-  const { data: signer, isError, isLoading } = useSigner()
+  const { chain } = useNetwork();
+  const provider = useProvider();
+
+  const { data: signer, isError, isLoading } = useSigner();
 
   const [nft, setNft] = useState<NFT[]>([]);
   const [errorProof, setErrorProof] = useState<Error | null>(null);
@@ -63,65 +58,67 @@ export default function Token() {
     type: "ERC721",
     tokenAddress: contractAddress,
     tokenId,
-  }
+  };
 
   const AMOUNT = {
     type: "ERC20",
     tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    amount: nftPrice ? ethers.utils.parseUnits(nftPrice?.toString(), "ether") : 0,
-  }
-
+    amount: nftPrice
+      ? ethers.utils.parseUnits(nftPrice?.toString(), "ether")
+      : 0,
+  };
 
   useEffect(() => {
     const fetchNft = async () => {
       setLoadingNft(true);
-      try {
-        const options = {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            Authorization: "c8e0e790-87a7-410c-b684-62ad610b00b2",
-          },
-        };
+      if (tokenId && contractAddress) {
+        try {
+          const options = {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              Authorization: "c8e0e790-87a7-410c-b684-62ad610b00b2",
+            },
+          };
 
-        await fetch(
-          `https://api.nftport.xyz/v0/nfts/${contractAddress}/${tokenId}?chain=${chain?.name.toLowerCase()}&refresh_metadata=false`,
-          options
-        )
-          .then((res) => res.json())
-          // .then((res) => console.log(res.nft));
-          .then((data) => setNft(data.nft));
-      } catch (error) {
-        console.log(error);
-        // setErrorProof(error)
-      } finally {
-        setLoadingNft(false);
+          await fetch(
+            `https://api.nftport.xyz/v0/nfts/${contractAddress}/${tokenId}?chain=${chain?.name.toLowerCase()}&refresh_metadata=false`,
+            options
+          )
+            .then((res) => res.json())
+            // .then((res) => console.log(res.nft));
+            .then((data) => setNft(data.nft));
+        } catch (error) {
+          console.log(error);
+          // setErrorProof(error)
+        } finally {
+          setLoadingNft(false);
+        }
       }
     };
     fetchNft();
   }, [tokenId, contractAddress]);
 
-  
   const nftSwap = new NftSwapV4(provider, signer, chain?.id);
 
   const checkAllowance = async () => {
     try {
       const approvalStatusForUserA = await nftSwap.loadApprovalStatus(
         ASSET,
-        address,       
-      )
-      if (approvalStatusForUserA.contractApproved) return true
-      else await triggerAllowance()
+        address
+      );
+      if (approvalStatusForUserA.contractApproved) return true;
+      else await triggerAllowance();
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   const triggerAllowance = async () => {
-    console.log("inside")
+    console.log("inside");
     const approvalTx = await nftSwap.approveTokenOrNftByAsset(
       ASSET,
-      address,
+      address
       // {
       //   // These fees can be added via the website too,
       //   // not going in that deep as I might end up making a company :p
@@ -129,70 +126,95 @@ export default function Token() {
       //   maxFeePerGas: self.gasFee.gasPrice,
       //   gasLimit: self.gasFee.gas,
       // }
-      )
-      const approvalTxReceipt = await approvalTx.wait()
-      if (approvalTxReceipt.status) return true
-      else return false
-  }
-  
+    );
+    const approvalTxReceipt = await approvalTx.wait();
+    if (approvalTxReceipt.status) return true;
+    else return false;
+  };
+
   const createListing = async () => {
     try {
-      setTxInProcess(true)
-      await checkAllowance()
-      console.log(signer)  
-        
+      setTxInProcess(true);
+      await checkAllowance();
+      console.log(signer);
+
       const order = nftSwap.buildNftAndErc20Order(
         // I am offering an NFT
         ASSET,
         // I will receive an ERC20
         AMOUNT,
         // trade direction
-        'sell',
+        "sell",
         // My wallet address
         address
       );
-      
+
       const signedOrder = await nftSwap.signOrder(order);
-      
-      const postedOrder = await nftSwap.postOrder(signedOrder, chain?.id);
-      console.log('postedOrder',postedOrder)
-      setTxInProcess(false)
+
+      const postedOrder = await nftSwap
+        .postOrder(signedOrder, chain?.id)
+        .then(async (data) => {
+          const res = await fetch("/api/createlisting", {
+            method: "POST",
+            headers: {
+              accept: "application/json",
+            },
+            body: JSON.stringify({
+              tokenId: data.nftTokenId,
+              nonce: data.order.nonce,
+              contractAddress: data.nftToken,
+              fileUrl: nft?.cached_file_url || nft?.file_url,
+              price: nftPrice
+            }),
+          });
+          console.log("result", res);
+          const result = await res.json();
+          console.log("result", result);
+          if (res.status === 201) {
+            alert("Successfully listed!");
+            router.push("/");
+          }
+        });
+      console.log("postedOrder", postedOrder);
+      setTxInProcess(false);
     } catch (error) {
-      console.log(error)
-      setTxInProcess(false)
+      console.log(error);
+      setTxInProcess(false);
     }
-  }
+  };
 
   return (
-    <div className="m-8">
-      <div className="flex justify-center gap-80 ">
+    <div className="m-[10%]">
+      <div className="flex justify-center gap-40 ">
         <section className="flex flex-col my-4 gap-6">
           <h1 className="font-bold text-2xl my-4">List for Sale</h1>
-          <Input 
+          <Input
             color="default"
             labelRight="ETH"
             labelPlaceholder="Price"
             onChange={(e) => setPrice(Number.parseFloat(e.target.value))}
           />
-          {
-            txInProcess ?
+          {txInProcess ? (
             <Button disabled auto color="primary" css={{ px: "$13" }}>
               <Loading type="points" color="primary" size="sm" />
-            </Button> :
+            </Button>
+          ) : (
             <Button color="primary" auto onPress={createListing}>
               List
             </Button>
-          }
+          )}
         </section>
         <section className="flex">
           {nft?.file_url && (
             <div className="flex flex-col w-80 max-w-[300px]">
-                <img src={nft?.cached_file_url || nft?.file_url} alt="NFT_IMAGE" />
-                <p className="text-lg font-bold">{nft?.token_id}</p>
+              <img
+                src={nft?.cached_file_url || nft?.file_url}
+                alt="NFT_IMAGE"
+              />
+              <p className="text-lg font-bold">{nft?.token_id}</p>
             </div>
           )}
         </section>
-        
       </div>
     </div>
   );

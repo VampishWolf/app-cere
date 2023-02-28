@@ -65,7 +65,7 @@ export default function Profile() {
       }
     }
     fetchNfts();
-  }, [chain]);
+  }, [chain, address]);
 
   return (
     <div className="m-12">
@@ -86,7 +86,9 @@ export default function Profile() {
                         alt="NFT_IMAGE"
                       />
                     </div>
-                    <h3 className="p-2 ellipsis">{nft?.name || nft?.token_id}</h3>
+                    <h3 className="p-2 ellipsis">
+                      {nft?.name || nft?.token_id}
+                    </h3>
                   </div>
                 </Link>
               )

@@ -8,10 +8,7 @@ import { useEffect, useState } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
-
-
 export default function Home() {
-  
   return (
     <>
       <Head>
@@ -21,7 +18,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-          <HomePage />
+        <HomePage />
       </main>
     </>
   );

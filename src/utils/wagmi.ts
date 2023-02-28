@@ -4,7 +4,7 @@ import { goerli, mainnet, polygon } from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
 
-const alchemyAPIKey: string = 'xYgmsystQOAvbxkasQbLhq8nexMDrnPK';
+const alchemyAPIKey: string = "xYgmsystQOAvbxkasQbLhq8nexMDrnPK";
 const appMode: string = process.env.NEXT_PUBLIC_ENV_MODE!;
 const { chains, provider, webSocketProvider } = configureChains(
   [mainnet, polygon, goerli],
