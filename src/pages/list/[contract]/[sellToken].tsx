@@ -1,6 +1,7 @@
 import { Button, Input, Loading } from "@nextui-org/react";
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
+import { NftSwapV4, SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
 import { ethers } from "ethers";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useAccount, useNetwork, useProvider, useSigner } from "wagmi";
@@ -34,6 +35,30 @@ export default function Token() {
     updated_date: string;
   }
 
+  const initialNFT: NFT = {
+    chain: "",
+    contract_address: "",
+    token_id: "",
+    metadata_url: "",
+    metadata: {
+      name: "",
+      description: "",
+      image: ""
+    },
+    file_information: {
+      height: 0,
+      width: 0,
+      file_size: 0,
+    },
+    file_url: "",
+    animation_url: null,
+    cached_file_url: "",
+    cached_animation_url: null,
+    creator_address: "",
+    mint_date: null,
+    updated_date: ""
+  }
+
   const router = useRouter();
   const { query, asPath } = router;
 
@@ -48,24 +73,22 @@ export default function Token() {
 
   const { data: signer, isError, isLoading } = useSigner();
 
-  const [nft, setNft] = useState<NFT[]>([]);
+  const [nft, setNft] = useState<NFT>(initialNFT);
   const [errorProof, setErrorProof] = useState<Error | null>(null);
   const [loadingNft, setLoadingNft] = useState<boolean>(false);
   const [txInProcess, setTxInProcess] = useState<boolean>(false);
   const [nftPrice, setPrice] = useState<Number>(0);
 
-  const ASSET = {
+  const ASSET: SwappableAssetV4 = {
     type: "ERC721",
     tokenAddress: contractAddress,
-    tokenId,
+    tokenId: tokenId,
   };
 
-  const AMOUNT = {
+  const AMOUNT: SwappableAssetV4 = {
     type: "ERC20",
     tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    amount: nftPrice
-      ? ethers.utils.parseUnits(nftPrice?.toString(), "ether")
-      : 0,
+    amount: nftPrice ? ethers.utils.parseUnits(nftPrice?.toString(), "ether").toString() : "",
   };
 
   useEffect(() => {
@@ -97,15 +120,15 @@ export default function Token() {
       }
     };
     fetchNft();
-  }, [tokenId, contractAddress]);
+  }, [tokenId, contractAddress, chain]);
 
-  const nftSwap = new NftSwapV4(provider, signer, chain?.id);
+  const nftSwap = new NftSwapV4(provider, signer!, chain?.id);
 
   const checkAllowance = async () => {
     try {
       const approvalStatusForUserA = await nftSwap.loadApprovalStatus(
         ASSET,
-        address
+        address!
       );
       if (approvalStatusForUserA.contractApproved) return true;
       else await triggerAllowance();
@@ -118,7 +141,7 @@ export default function Token() {
     console.log("inside");
     const approvalTx = await nftSwap.approveTokenOrNftByAsset(
       ASSET,
-      address
+      address!
       // {
       //   // These fees can be added via the website too,
       //   // not going in that deep as I might end up making a company :p
@@ -146,13 +169,13 @@ export default function Token() {
         // trade direction
         "sell",
         // My wallet address
-        address
+        address!
       );
 
       const signedOrder = await nftSwap.signOrder(order);
 
       const postedOrder = await nftSwap
-        .postOrder(signedOrder, chain?.id)
+        .postOrder(signedOrder, chain?.id!)
         .then(async (data) => {
           const res = await fetch("/api/listings", {
             method: "POST",
@@ -163,7 +186,7 @@ export default function Token() {
               tokenId: data.nftTokenId,
               nonce: data.order.nonce,
               contractAddress: data.nftToken,
-              fileUrl: nft?.cached_file_url || nft?.file_url,
+              fileUrl: nft.file_url ? nft?.file_url : nft?.cached_file_url,
               price: nftPrice
             }),
           });
@@ -207,9 +230,11 @@ export default function Token() {
         <section className="flex">
           {nft?.file_url && (
             <div className="flex flex-col w-80 max-w-[300px] rounded-2xl overflow-hidden border border-purple-900">
-              <img
+              <Image
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
+                width={nft?.file_information.width}
+                height={nft?.file_information.height}
               />
               <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>

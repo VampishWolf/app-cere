@@ -1,4 +1,4 @@
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useNetwork, useProvider, useSigner } from "wagmi";
@@ -16,6 +16,10 @@ export default function HomePage() {
     __v: number;
   }
 
+  interface UniqueTokens {
+    [key: string]: Listing;
+  }
+
   const [savedListings, setSavedtListings] = useState<Listing[]>([]);
   const [errorProof, setErrorProof] = useState<Error | null>(null);
   const [loadingListings, setLoadingListings] = useState<boolean>(false);
@@ -23,7 +27,6 @@ export default function HomePage() {
   const { chain } = useNetwork();
   const provider = useProvider();
   const { data: signer, isError, isLoading } = useSigner();
-  const nftSwap = new NftSwapV4(provider, signer, chain?.id);
 
   useEffect(() => {
     async function fetchNfts() {
@@ -33,7 +36,7 @@ export default function HomePage() {
         const data = await res.json();
 
         // Saves only unique tokenIds with lowest price
-        const uniqueTokens = {};
+        const uniqueTokens:UniqueTokens = {};
         data.forEach((obj:Listing) => {
           if (
             !uniqueTokens[obj.tokenId] ||
@@ -70,7 +73,13 @@ export default function HomePage() {
                 >
                   <div className="m-2 border border-purple-900 rounded-2xl cursor-pointer overflow-hidden hover:scale-105 ease-in-out duration-200 w-80 h-100 max-w-[300px]">
                     <div className="relative">
-                      <img src={listing?.fileUrl} alt="NFT_IMAGE" />
+                      {/* <img src={listing?.fileUrl} alt="NFT_IMAGE" /> */}
+                      <Image
+                        src={listing?.fileUrl}
+                        alt="NFT_IMAGE"
+                        width={400}
+                        height={400}
+                      />
                     </div>
                     <div className="flex justify-between items-center font-bold">
                       <p className="p-2 ellipsis">{listing?.tokenId}</p>

@@ -1,6 +1,11 @@
 import { Button, Input, Loading, Text } from "@nextui-org/react";
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
+import {
+  NftSwapV4,
+  SignedNftOrderV4Serialized,
+  SwappableAssetV4,
+} from "@traderxyz/nft-swap-sdk";
 import { ethers } from "ethers";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useAccount, useNetwork, useProvider, useSigner } from "wagmi";
@@ -58,35 +63,66 @@ export default function Token() {
     updated_date: string;
   }
 
-  const router = useRouter();
-  const { query } = router;
+  const initialNFT: NFT = {
+    chain: "",
+    contract_address: "",
+    token_id: "",
+    metadata_url: "",
+    metadata: {
+      name: "",
+      description: "",
+      image: "",
+    },
+    file_information: {
+      height: 0,
+      width: 0,
+      file_size: 0,
+    },
+    file_url: "",
+    animation_url: null,
+    cached_file_url: "",
+    cached_animation_url: null,
+    creator_address: "",
+    mint_date: null,
+    updated_date: "",
+  };
 
-  const { nonce, contract, buyToken, listingId } = query;
+  const router = useRouter();
+  const { query, asPath } = router;
+
+  const tokens = asPath.split("/");
+  const contractAddress = tokens[tokens.length - 2];
+  const tokenId = tokens[tokens.length - 1].slice(
+    0,
+    tokens[tokens.length - 1].indexOf("?")
+  );
+
+  const { nonce, listingId } = query;
 
   const { address, isConnected } = useAccount();
   const { chain } = useNetwork();
   const provider = useProvider();
   const { data: signer, isError, isLoading } = useSigner();
-  const nftSwap = new NftSwapV4(provider, signer, chain?.id);
+  const nftSwap = new NftSwapV4(provider, signer!, chain?.id);
 
-  const [nft, setNft] = useState<NFT[]>([]);
-  const [listing, setListing] = useState<Listing[]>([]);
+  const [nft, setNft] = useState<NFT>(initialNFT);
+  const [listing, setListing] = useState<SignedNftOrderV4Serialized>();
   const [errorProof, setErrorProof] = useState<Error | null>(null);
   const [loadingNft, setLoadingNft] = useState<boolean>(false);
   const [loadingListing, setLoadingListing] = useState<boolean>(false);
   const [txInProcess, setTxInProcess] = useState<boolean>(false);
   const [nftPrice, setPrice] = useState<Number>(0);
 
-  const ASSET = {
+  const ASSET: SwappableAssetV4 = {
     type: "ERC721",
-    tokenAddress: contract,
-    token: buyToken,
+    tokenAddress: contractAddress,
+    tokenId: tokenId,
   };
 
-  const AMOUNT = {
+  const AMOUNT: SwappableAssetV4 = {
     type: "ERC20",
     tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    amount: ethers.utils.parseUnits(nftPrice.toString(), "ether"),
+    amount: ethers.utils.parseUnits(nftPrice.toString(), "ether").toString(),
   };
 
   useEffect(() => {
@@ -95,13 +131,12 @@ export default function Token() {
       if (nonce) {
         try {
           // Search the orderbook for all offers to sell this NFT
-          // console.log('nonce',nonce)
           const orders = await nftSwap
-            .getOrders({
+            ?.getOrders({
               nonce: nonce?.toString(),
             })
             // .then((data) => console.log(data.orders[0]))
-            .then((data) => setListing(data?.orders[0]));
+            .then((data) => setListing(data?.orders[0].order));
         } catch (error) {
           console.log(error);
           // setErrorProof(error)
@@ -116,7 +151,7 @@ export default function Token() {
   useEffect(() => {
     const fetchNft = async () => {
       setLoadingNft(true);
-      if (contract && buyToken && chain?.name) {
+      if (contractAddress && tokenId && chain?.name) {
         try {
           const options = {
             method: "GET",
@@ -127,7 +162,7 @@ export default function Token() {
           };
 
           await fetch(
-            `https://api.nftport.xyz/v0/nfts/${contract}/${buyToken}?chain=${chain.name.toLowerCase()}&refresh_metadata=false`,
+            `https://api.nftport.xyz/v0/nfts/${contractAddress}/${tokenId}?chain=${chain.name.toLowerCase()}&refresh_metadata=false`,
             options
           )
             .then((res) => res.json())
@@ -141,13 +176,13 @@ export default function Token() {
       }
     };
     fetchNft();
-  }, [buyToken, contract, chain?.name]);
+  }, [tokenId, contractAddress, chain?.name]);
 
   const checkAllowance = async () => {
     try {
       const approvalStatusForUserA = await nftSwap.loadApprovalStatus(
         AMOUNT,
-        address
+        address!
       );
       if (approvalStatusForUserA.contractApproved) return true;
       else await triggerAllowance();
@@ -158,11 +193,10 @@ export default function Token() {
   };
 
   const triggerAllowance = async () => {
-    // console.log("inside");
     try {
       const approvalTx = await nftSwap.approveTokenOrNftByAsset(
         AMOUNT,
-        address
+        address!
       );
       const approvalTxReceipt = await approvalTx.wait();
       if (approvalTxReceipt.status) return true;
@@ -176,14 +210,13 @@ export default function Token() {
   const fillListing = async () => {
     try {
       setTxInProcess(true);
-      if (listing?.order.maker === address?.toLowerCase()) {
+      if (listing?.maker === address?.toLowerCase()) {
         alert("Cannot buy a token you already own");
         setTxInProcess(false);
         return;
       }
       await checkAllowance();
-      // console.log(listing);
-      const fillTx = await nftSwap.fillSignedOrder(listing?.order);
+      const fillTx = await nftSwap.fillSignedOrder(listing!);
       const fillTxReceipt = await nftSwap.awaitTransactionHash(fillTx.hash);
       console.log(
         `🎉 🥳 Order filled. TxHash: ${fillTxReceipt.transactionHash}`
@@ -214,10 +247,6 @@ export default function Token() {
     }
   };
 
-  const getTokenPrice = (price: any) => {
-    return ethers.utils.parseEther(price.toString());
-  };
-
   return (
     <div className="m-[10%]">
       <div className="flex justify-center gap-40 ">
@@ -230,13 +259,16 @@ export default function Token() {
           {listing?.erc20TokenAmount && (
             <div className="flex justify-between items-center">
               <p>Listed Price</p>
-              <span>{listing.erc20TokenAmount.toString() / 1e18 + " ETH"}</span>
+              <span>{Number(listing?.erc20TokenAmount) / 1e18 + " ETH"}</span>
             </div>
           )}
-          {listing?.order?.maker && (
+          {listing?.maker && (
             <div className="flex justify-between items-center gap-6">
               <p>Owner</p>
-              <span>{`${listing.order.maker.slice(0,6)}...${listing.order.maker.slice(-6)}`}</span>
+              <span>{`${listing?.maker.slice(
+                0,
+                6
+              )}...${listing?.maker.slice(-6)}`}</span>
             </div>
           )}
           {txInProcess ? (
@@ -252,9 +284,11 @@ export default function Token() {
         <section className="flex">
           {nft?.file_url && (
             <div className="flex flex-col w-80 max-w-[300px] rounded-2xl overflow-hidden border border-purple-900">
-              <img
+              <Image
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
+                width={nft?.file_information.width}
+                height={nft?.file_information.height}
               />
               <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>
