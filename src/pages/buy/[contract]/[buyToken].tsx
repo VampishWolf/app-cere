@@ -287,8 +287,8 @@ export default function Token() {
               <Image
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
-                width={nft?.file_information.width}
-                height={nft?.file_information.height}
+                width={400}
+                height={400}
               />
               <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>

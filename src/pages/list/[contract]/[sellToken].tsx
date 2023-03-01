@@ -43,7 +43,7 @@ export default function Token() {
     metadata: {
       name: "",
       description: "",
-      image: ""
+      image: "",
     },
     file_information: {
       height: 0,
@@ -56,8 +56,8 @@ export default function Token() {
     cached_animation_url: null,
     creator_address: "",
     mint_date: null,
-    updated_date: ""
-  }
+    updated_date: "",
+  };
 
   const router = useRouter();
   const { query, asPath } = router;
@@ -88,7 +88,9 @@ export default function Token() {
   const AMOUNT: SwappableAssetV4 = {
     type: "ERC20",
     tokenAddress: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    amount: nftPrice ? ethers.utils.parseUnits(nftPrice?.toString(), "ether").toString() : "",
+    amount: nftPrice
+      ? ethers.utils.parseUnits(nftPrice?.toString(), "ether").toString()
+      : "",
   };
 
   useEffect(() => {
@@ -187,7 +189,7 @@ export default function Token() {
               nonce: data.order.nonce,
               contractAddress: data.nftToken,
               fileUrl: nft.file_url ? nft?.file_url : nft?.cached_file_url,
-              price: nftPrice
+              price: nftPrice,
             }),
           });
           console.log("result", res);
@@ -233,8 +235,8 @@ export default function Token() {
               <Image
                 src={nft?.cached_file_url || nft?.file_url}
                 alt="NFT_IMAGE"
-                width={nft?.file_information.width}
-                height={nft?.file_information.height}
+                width={400}
+                height={400}
               />
               <p className="text-lg font-bold m-2">{nft?.token_id}</p>
             </div>

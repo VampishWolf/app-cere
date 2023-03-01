@@ -10,8 +10,8 @@ export default async function handler(
     try {
       const id = req.query.id;
       const { db } = await mongodb();
-      const deletedListing = await db.collection("listings").deleteMany({ tokenId: id });
-    //   const deletedListing = await Listing.findByIdAndDelete(id); // delete the record by id
+      // const deletedListing = await db.collection("listings").deleteMany({ tokenId: id });
+      const deletedListing = await Listing.findByIdAndDelete(id); // delete the record by id
       res.status(200).json(deletedListing);
     } catch (err) {
       console.error(err);
