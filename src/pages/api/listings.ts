@@ -21,9 +21,9 @@ export default async function handler(
     }
   } else if (req.method === "POST") {
     const body = JSON.parse(req.body);
-    const { contractAddress, fileUrl, nonce, tokenId, price } = body;
+    const { contractAddress, fileUrl, nonce, tokenId, price, chain } = body;
 
-    if (!contractAddress || !tokenId || !nonce || !fileUrl || !price) {
+    if (!contractAddress || !tokenId || !nonce || !fileUrl || !price || !chain) {
       res.status(400).json({ message: "Missing required fields." });
       return;
     }
@@ -38,6 +38,7 @@ export default async function handler(
         nonce,
         tokenId,
         price,
+        chain,
       });
 
       // Save the listing to MongoDB

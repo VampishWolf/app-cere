@@ -24,6 +24,10 @@ const listingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    chain: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );

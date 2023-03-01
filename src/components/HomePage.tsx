@@ -11,6 +11,7 @@ export default function HomePage() {
     contractAddress: string;
     price: string;
     tokenId: string;
+    chain: string,
     createdAt: string;
     updatedAt: string;
     __v: number;
@@ -73,7 +74,6 @@ export default function HomePage() {
                 >
                   <div className="m-2 border border-purple-900 rounded-2xl cursor-pointer overflow-hidden hover:scale-105 ease-in-out duration-200 w-80 h-100 max-w-[300px]">
                     <div className="relative">
-                      {/* <img src={listing?.fileUrl} alt="NFT_IMAGE" /> */}
                       <Image
                         src={listing?.fileUrl}
                         alt="NFT_IMAGE"
@@ -85,6 +85,7 @@ export default function HomePage() {
                       <p className="p-2 ellipsis">{listing?.tokenId}</p>
                       <p className="p-2 ellipsis">{listing?.price + " ETH"}</p>
                     </div>
+                      <p className="mx-2 mb-1 font-bold">On {listing?.chain}</p>
                   </div>
                 </Link>
               )

@@ -190,6 +190,7 @@ export default function Token() {
               contractAddress: data.nftToken,
               fileUrl: nft.file_url ? nft?.file_url : nft?.cached_file_url,
               price: nftPrice,
+              chain: chain?.name
             }),
           });
           console.log("result", res);
